@@ -37,6 +37,15 @@
 
 #define TIMER_INTERRUPT
 //#define POOLING
+
+// https://www.st.com/resource/en/reference_manual/rm0432-stm32l4-series-advanced-armbased-32bit-mcus-stmicroelectronics.pdf
+// SYSCFG external interrupt configuration register 4
+volatile uint32_t *SYSCFG_EXTICR4 = (uint32_t *)0x14;
+// Rising trigger selection register 2 (EXTI_RTSR2)
+volatile uint32_t *EXTI_RTSR2 = (uint32_t *)0x28;
+// Falling trigger selection register 1 (EXTI_FTSR1)
+volatile uint32_t *EXTI_FTSR1 = (uint32_t *)0x0C;
+
 /* USER CODE END PD */
 
 /* Private macro ----------------------------------s---------------------------*/
@@ -111,6 +120,13 @@ int main(void)
   led3.turnLedOff();
   led2.turnLedOff();
   HAL_Delay(5000);
+  // This works without below configuration
+  // set bits 7:4 to 0010 for PC13 pin
+  *SYSCFG_EXTICR4 = 0x00008828;
+  *EXTI_RTSR2 = 0x00000000;
+  *EXTI_RTSR2 |= (0x1F << 3);   // Set bits 7:3 to 1 1111
+//Example source :  https://deepbluembedded.com/stm32-external-interrupt-example-lab/
+
   while (1)
   {
 #ifdef POOLING // This part works
@@ -132,7 +148,7 @@ int main(void)
 	  {
 		  buttonPressed = false;
 		  led2.turnLedOn();
-		  HAL_Delay(1000);
+		  HAL_Delay(1000); // Why we need this delay
 	  }
 	  else
 	  {
@@ -205,6 +221,42 @@ void SystemClock_Config(void)
   * @param None
   * @retval None
   */
+//static void MX_GPIO_Init(void)
+//{
+//  GPIO_InitTypeDef GPIO_InitStruct = {0};
+///* USER CODE BEGIN MX_GPIO_Init_1 */
+///* USER CODE END MX_GPIO_Init_1 */
+//
+//  /* GPIO Ports Clock Enable */
+//  __HAL_RCC_GPIOC_CLK_ENABLE();
+//  __HAL_RCC_GPIOH_CLK_ENABLE();
+//  __HAL_RCC_GPIOB_CLK_ENABLE();
+//
+//  /*Configure GPIO pin Output Level */
+//  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14|GPIO_PIN_7, GPIO_PIN_RESET);
+//
+//  /*Configure GPIO pins : PB14 PB7 */
+//  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_7;
+//  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+//  GPIO_InitStruct.Pull = GPIO_NOPULL;
+//  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+//  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+//
+///* USER CODE BEGIN MX_GPIO_Init_2 */
+//  /*Configure GPIO pin : PC13 */
+//    GPIO_InitStruct.Pin = GPIO_PIN_13;
+//    GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+//    GPIO_InitStruct.Pull = GPIO_NOPULL;
+//    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+//
+//#ifdef TIMER_INTERRUPT
+//    // Enable and set EXTI line Interrupt to the lowest priority
+//	HAL_NVIC_SetPriority(BUTTON_EXTI_IRQn, 2, 0);
+//	HAL_NVIC_EnableIRQ(BUTTON_EXTI_IRQn);
+//#endif
+///* USER CODE END MX_GPIO_Init_2 */
+//}
+
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -217,38 +269,37 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14|GPIO_PIN_7, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PB14 PB7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_7;
+  /*Configure GPIO pin : PC13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-  /*Configure GPIO pin : PC13 */
-    GPIO_InitStruct.Pin = GPIO_PIN_13;
-    GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
 #ifdef TIMER_INTERRUPT
-    // Enable and set EXTI line Interrupt to the lowest priority
-	HAL_NVIC_SetPriority(BUTTON_EXTI_IRQn, 2, 0);
-	HAL_NVIC_EnableIRQ(BUTTON_EXTI_IRQn);
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 #endif
+/* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
-
 /* USER CODE BEGIN 4 */
 // Interrupt handler
-void EXTI15_10_IRQHandler(void) {
-    if (__HAL_GPIO_EXTI_GET_IT(BUTTON_PIN) != RESET) {
-        __HAL_GPIO_EXTI_CLEAR_IT(BUTTON_PIN);
-        buttonPressed = true;
+// EXTI Line9 External Interrupt ISR Handler CallBackFun
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    if(GPIO_Pin == GPIO_PIN_13) // If The INT Source Is EXTI Line9 (A9 Pin)
+    {
+    	buttonPressed = true;
     }
-//    HAL_GPIO_EXTI_IRQHandler(BUTTON_PIN);
 }
 /* USER CODE END 4 */
 
