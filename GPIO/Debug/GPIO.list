@@ -276,7 +276,7 @@ int main(void)
  800030a:	463b      	mov	r3, r7
  800030c:	4618      	mov	r0, r3
  800030e:	f7ff ff89 	bl	8000224 <_ZN3LED9turnLedOnEv>
-		  HAL_Delay(1000);
+		  HAL_Delay(1000); // Why we need this delay
  8000312:	f44f 707a 	mov.w	r0, #1000	@ 0x3e8
  8000316:	f000 f9f9 	bl	800070c <HAL_Delay>
  800031a:	e7ee      	b.n	80002fa <main+0x96>

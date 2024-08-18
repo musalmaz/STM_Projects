@@ -1,0 +1,5 @@
+../Core/Src/uart_driver.c:13:6:transmit_UART_MSG	24	static
+../Core/Src/uart_driver.c:22:6:transmit_UART_MSG_Pooling	24	static
+../Core/Src/uart_driver.c:32:6:transmit_UART_MSG_IT	24	static
+../Core/Src/uart_driver.c:37:6:transmit_UART_MSG_IT_Event	24	static
+../Core/Src/uart_driver.c:42:6:transmit_UART_MSG_DMA	24	static
